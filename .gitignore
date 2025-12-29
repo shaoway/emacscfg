@@ -1,0 +1,5 @@
+*.elc
+*.eln
+eln-cache/
+auto-save-list/
+eshell
