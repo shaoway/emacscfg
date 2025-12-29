@@ -112,11 +112,27 @@
   (setq which-key-add-column-padding 1)
   (setq which-key-max-description-length 40))
 
+(use-package epa
+  :ensure nil
+  :config
+  ;; using password when open encypt file
+  (setq epa-file-cache-passphrase-for-symmetric-encryption t)
+  (setq epa-pinentry-mode 'loopback))
+
 (use-package icicles
   :ensure nil
   :load-path "icicles/"
   :config (icy-mode 1))
 
+;; Emacs Time Stamp
+;; Enabling automatic time-stamping in Emacs
+;; When there is a "Time-stamp: <>" string in the first 10 lines of the file,
+;; Emacs will write time-stamp information there when saving the file.
+;; (Borrowed from http://home.thep.lu.se/~karlf/emacs.html)
+(setq time-stamp-active t          ; Do enable time-stamps.
+      time-stamp-line-limit 10     ; Check first 10 buffer lines for Time-stamp: <>
+      time-stamp-format "Last changed %Y-%02m-%02d %02H:%02M:%02S by %l")
+(add-hook 'write-file-hooks 'time-stamp) ; Update when saving.
 
 ;; keep this last
 (when (file-exists-p custom-file)
