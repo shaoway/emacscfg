@@ -51,8 +51,11 @@
   (resize-mini-windows 'grow-only)
   (scroll-conservatively 8)
   (scroll-margin 5)
+  (hl-line-sticky-flag nil)
+  (global-hl-line-sticky-flag nil)
   (xref-search-program 'ripgrep)
   (grep-command "rg -nS --no-heading ")
+  (grep-use-null-device nil)
   (grep-find-ignored-directories
    '("SCCS" "RCS" "CVS" "MCVS" ".src" ".svn" ".git" ".hg" ".bzr" "_MTN" "_darcs" "{arch}" "node_modules" "build" "dist"))
   
@@ -82,6 +85,10 @@ If point was already at that position, move point to beginning of line."
       (back-to-indentation)
       (and (= oldpos (point))
            (beginning-of-line))))
+
+  (when window-system
+    (setq frame-inhibit-implied-resize t)
+    (setq pixel-scroll-precision-mode t))
   
   (with-current-buffer (get-buffer-create "*scratch*")
     (insert (format ";;
@@ -165,6 +172,7 @@ If point was already at that position, move point to beginning of line."
 (use-package eglot
   :ensure nil
   :custom
+  (eglot-sync-connect 0)
   (eglot-autoshutdown t)
   (eglot-events-buffer-size 0)
   (eglot-events-buffer-config '(:size 0 :format full))
@@ -180,7 +188,14 @@ If point was already at that position, move point to beginning of line."
   (add-hook 'prog-mode-hook (lambda ()
                               "Setup eglot mode with specific exclusions."
                               (unless (eq major-mode 'emacs-lisp-mode)
-                                (eglot-ensure)))))
+                                (eglot-ensure))))
+  :bind (:map
+         eglot-mode-map
+         ("C-c l a" . eglot-code-actions)
+         ("C-c l o" . eglot-code-action-organize-imports)
+         ("C-c l r" . eglot-rename)
+         ("C-c l f" . eglot-format)))
+
 (use-package abbrev
   :ensure nil
   :custom
@@ -289,6 +304,71 @@ If point was already at that position, move point to beginning of line."
   :init
   (global-eldoc-mode))
 
+(use-package org
+  :ensure nil
+  :defer t
+  :mode ("\\.org\\'" . org-mode)
+  :config
+  (setopt org-export-backends '(ascii html icalendar latex odt md))
+  (setq
+   ;; Start collapsed for speed
+   org-startup-folded t
+
+   ;; Edit settings
+   org-hide-leading-stars t
+   org-auto-align-tags nil
+   org-tags-column 0
+   org-catch-invisible-edits 'show-and-error
+   org-special-ctrl-a/e t
+   org-insert-heading-respect-content t
+
+   ;; Org styling, hide markup etc.
+   org-hide-emphasis-markers t
+   org-pretty-entities t
+   org-use-sub-superscripts nil ;; We want the above but no _ subscripts ^ superscripts
+
+   ;; Agenda styling
+   org-agenda-tags-column 0
+   org-agenda-block-separator ?─
+   org-agenda-time-grid
+   '((daily today require-timed)
+     (800 1000 1200 1400 1600 1800 2000)
+     " ┄┄┄┄┄ " "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄")
+   org-agenda-current-time-string
+   "◀── now ─────────────────────────────────────────────────")
+
+  ;; Ellipsis styling
+  (setq org-ellipsis " ▼ ")
+  (set-face-attribute 'org-ellipsis nil :inherit 'default :box nil)
+
+
+  ;; Keywords
+  ;; As seen in https://github.com/gregnewman/gmacs/blob/master/gmacs.org
+  (setq org-todo-keywords
+        (quote ((sequence "TODO(t)" "NEXT(n)" "|" "DONE(d)" "PROJECTDONE(e)")
+                (sequence "WAITING(w@/!)" "SOMEDAY(s@/!)" "|" "CANCELLED(c@/!)"))))
+  (setq org-todo-keyword-faces
+        (quote (("TODO" :foreground "lime green" :weight bold)
+                ("NEXT" :foreground "cyan" :weight bold)
+                ("DONE" :foreground "dim gray" :weight bold)
+                ("PROJECTDONE" :foreground "dim gray" :weight bold)
+                ("WAITING" :foreground "tomato" :weight bold)
+                ("SOMEDAY" :foreground "magenta" :weight bold)
+                ("CANCELLED" :foreground "dim gray" :weight bold))))
+
+  ;; Anytime a task is marked done the line states `CLOSED: [timestamp]
+  (setq org-log-done 'time)
+
+  ;; Load babel only when org loads
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((python . t)
+     (js . t)
+     (emacs-lisp . t)
+     (org . t)
+     (shell . t)))
+  (setq org-confirm-babel-evaluate nil))
+
 (use-package markdown-ts-mode
   :ensure nil
   :mode "\\.md\\'"
@@ -304,12 +384,57 @@ If point was already at that position, move point to beginning of line."
   :config
   (add-to-list 'treesit-language-source-alist '(yaml "https://github.com/tree-sitter-grammars/tree-sitter-yaml" "master" "src")))
 
+;;  Loads users default shell PATH settings into Emacs. Usefull
+;;  when calling Emacs directly from GUI systems.
+(use-package exec-path-from-shell
+  :ensure nil
+  :no-require t
+  :defer t
+  :init
+  (defun set-exec-path-from-shell-PATH ()
+    "Set up Emacs' `exec-path' and PATH environment the same as the user's shell.
+This works with bash, zsh, or fish)."
+    (interactive)
+    (let* ((shell (getenv "SHELL"))
+           (shell-name (file-name-nondirectory shell))
+           (command
+            (cond
+             ((string= shell-name "fish")
+              "fish -c 'string join : $PATH'")
+             ((string= shell-name "zsh")
+              "zsh -i -c 'printenv PATH'")
+             ((string= shell-name "bash")
+              "bash --login -c 'echo $PATH'")
+             (t nil))))
+      (if (not command)
+          (message "emacs: Unsupported shell: %s" shell-name)
+        (let ((path-from-shell
+               (replace-regexp-in-string
+                "[ \t\n]*$" ""
+                (shell-command-to-string command))))
+          (when (and path-from-shell (not (string= path-from-shell "")))
+            (setenv "PATH" path-from-shell)
+            (setq exec-path (split-string path-from-shell path-separator))
+            (message ">>> emacs: PATH loaded from %s" shell-name))))))
+
+  (add-hook 'after-init-hook #'set-exec-path-from-shell-PATH))
 
 
 (use-package icicles
   :ensure nil
   :load-path "icicles/"
-  :config (icy-mode 1))
+  :config
+  (icy-mode 1))
+
+;; Add maxima's emacs support files path to load-path
+;; (use-package imaxima
+;;   :ensure nil
+;;   :load-path "maxima/")
+
+;; (use-package imath
+;;   :ensure nil
+;;   :load-path "maxima/")
+
 
 ;; Emacs Time Stamp
 ;; Enabling automatic time-stamping in Emacs
