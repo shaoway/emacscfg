@@ -72,7 +72,6 @@
     (set-face-attribute 'default nil :family "Maple Mono NF CN" :height 140))
 
   :init
-
   (defun smart-beginning-of-line ()
     "Move point to first non-whitespace character or beginning-of-line.
 
@@ -116,10 +115,24 @@ If point was already at that position, move point to beginning of line."
   :bind
   (("C-c e" . eshell))
   :config
+  (setopt eshell-banner-message
+          (concat
+           (propertize "   Welcome to the Emacs Shell  \n\n" 'face '(:weight bold :foreground "red"))))
+
   (setq eshell-history-size 100000)
   (setq eshell-hist-ignoredups t)
-  ;; SET TERM ENV SO MOST PROGRAMS WON'T COMPLAIN
-  (add-hook 'eshell-mode-hook (lambda () (setenv "TERM" "xterm-256color"))))
+  (add-hook 'eshell-mode-hook (lambda ()
+                                (setenv "TERM" "xterm-256color") ;; SET TERM ENV SO MOST PROGRAMS WON'T COMPLAIN
+                                ;; Locally reset scrolling behavior in term-like buffers.
+                                (setq-local scroll-conservatively 0)
+                                (setq-local scroll-margin 0)
+                                (eshell/alias "e" "find-file $1")
+                                (eshell/alias "d" "dired $1")
+                                (local-set-key (kbd "C-d")
+                                            (lambda ()
+                                              (interactive)
+                                              (insert "exit")
+                                              (eshell-send-input))))))
 
 (use-package uniquify
   :ensure nil
@@ -227,7 +240,7 @@ If point was already at that position, move point to beginning of line."
   (speedbar-show-unknown-files t)
   (speedbar-directory-unshown-regexp "^$")
   (speedbar-indentation-width 2)
-  (speedbar-use-images t)
+  (speedbar-use-images nil)
   (speedbar-update-flag nil)
   :config
   (setq speedbar-expand-image-button-alist
@@ -275,6 +288,23 @@ If point was already at that position, move point to beginning of line."
   (eldoc-documentation-strategy 'eldoc-documentation-compose)
   :init
   (global-eldoc-mode))
+
+(use-package markdown-ts-mode
+  :ensure nil
+  :mode "\\.md\\'"
+  :defer t
+  :config
+  (add-to-list 'treesit-language-source-alist '(markdown "https://github.com/tree-sitter-grammars/tree-sitter-markdown" "split_parser" "tree-sitter-markdown/src"))
+  (add-to-list 'treesit-language-source-alist '(markdown-inline "https://github.com/tree-sitter-grammars/tree-sitter-markdown" "split_parser" "tree-sitter-markdown-inline/src")))
+
+(use-package yaml-ts-mode
+  :ensure yaml-ts-mode
+  :mode "\\.ya?ml\\'"
+  :defer t
+  :config
+  (add-to-list 'treesit-language-source-alist '(yaml "https://github.com/tree-sitter-grammars/tree-sitter-yaml" "master" "src")))
+
+
 
 (use-package icicles
   :ensure nil
