@@ -91,22 +91,18 @@ If point was already at that position, move point to beginning of line."
     (setq pixel-scroll-precision-mode t))
   
   (with-current-buffer (get-buffer-create "*scratch*")
-    (insert (format ";;
-;;
-;;
-;;                ███████╗███╗   ███╗ █████╗  ██████╗███████╗
-;;                ██╔════╝████╗ ████║██╔══██╗██╔════╝██╔════╝
-;;                █████╗  ██╔████╔██║███████║██║     ███████╗
-;;                ██╔══╝  ██║╚██╔╝██║██╔══██║██║     ╚════██║
-;;                ███████╗██║ ╚═╝ ██║██║  ██║╚██████╗███████║
-;;                ╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝╚══════╝
-;;
+    (insert (format ";;                                                  
+;;               ▄███▄   █▀▄▀█ ██   ▄█▄      ▄▄▄▄▄   
+;;               █▀   ▀  █ █ █ █ █  █▀ ▀▄   █     ▀▄ 
+;;               ██▄▄    █ ▄ █ █▄▄█ █   ▀ ▄  ▀▀▀▀▄   
+;;               █▄   ▄▀ █   █ █  █ █▄  ▄▀ ▀▄▄▄▄▀    
+;;               ▀███▀      █     █ ▀███▀            
+;;                         ▀     █                   
+;;                           ▀                    
 ;;                Loading time : %s
-;;                Packages     : %s
 ;;
   "
-                    (emacs-init-time)
-                    (number-to-string (length package-activated-list)))))
+                    (emacs-init-time))))
   (message (emacs-init-time)))
 
 (use-package isearch
