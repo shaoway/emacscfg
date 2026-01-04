@@ -431,6 +431,7 @@ This works with bash, zsh, or fish)."
 ;;   :ensure nil
 ;;   :load-path "maxima/")
 
+(add-to-list 'custom-theme-load-path (file-name-concat user-emacs-directory "themes"))
 
 ;; Emacs Time Stamp
 ;; Enabling automatic time-stamping in Emacs
